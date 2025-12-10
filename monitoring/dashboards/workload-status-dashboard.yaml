@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workload-status-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: '1'
+data:
+  workload-status-dashboard.json: "{\n  \"id\": null,\n  \"uid\": \"workload-status-dashboard\"\
+    ,\n  \"title\": \"Workload Status (project4-app)\",\n  \"schemaVersion\": 36,\n\
+    \  \"version\": 1,\n  \"timezone\": \"browser\",\n  \"refresh\": \"30s\",\n  \"\
+    panels\": [\n    {\n      \"type\": \"timeseries\",\n      \"title\": \"Desired\
+    \ Replicas (project4-app)\",\n      \"targets\": [\n        {\n          \"expr\"\
+    : \"sum by (namespace) (kube_deployment_status_replicas{deployment=\\\"project4-app\\\
+    \"})\",\n          \"legendFormat\": \"{{namespace}}\"\n        }\n      ],\n\
+    \      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"none\"\
+    \n        },\n        \"overrides\": []\n      },\n      \"gridPos\": {\n    \
+    \    \"h\": 8,\n        \"w\": 24,\n        \"x\": 0,\n        \"y\": 0\n    \
+    \  }\n    },\n    {\n      \"type\": \"timeseries\",\n      \"title\": \"Available\
+    \ Replicas (project4-app)\",\n      \"targets\": [\n        {\n          \"expr\"\
+    : \"sum by (namespace) (kube_deployment_status_replicas_available{deployment=\\\
+    \"project4-app\\\"})\",\n          \"legendFormat\": \"{{namespace}}\"\n     \
+    \   }\n      ],\n      \"fieldConfig\": {\n        \"defaults\": {\n         \
+    \ \"unit\": \"none\"\n        },\n        \"overrides\": []\n      },\n      \"\
+    gridPos\": {\n        \"h\": 8,\n        \"w\": 24,\n        \"x\": 0,\n     \
+    \   \"y\": 8\n      }\n    },\n    {\n      \"type\": \"timeseries\",\n      \"\
+    title\": \"Pod Restart Rate (project4-app)\",\n      \"targets\": [\n        {\n\
+    \          \"expr\": \"sum by (namespace) (rate(kube_pod_container_status_restarts_total{container=\\\
+    \"project4-app\\\"}[5m]))\",\n          \"legendFormat\": \"{{namespace}}\"\n\
+    \        }\n      ],\n      \"fieldConfig\": {\n        \"defaults\": {\n    \
+    \      \"unit\": \"none\"\n        },\n        \"overrides\": []\n      },\n \
+    \     \"gridPos\": {\n        \"h\": 8,\n        \"w\": 24,\n        \"x\": 0,\n\
+    \        \"y\": 16\n      }\n    }\n  ]\n}"

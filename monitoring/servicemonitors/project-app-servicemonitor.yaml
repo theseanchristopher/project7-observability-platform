@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: project-app-servicemonitor
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: project4-app    # <-- match the label on your Service
+  namespaceSelector:
+    matchNames:
+      - project6-dev
+      - project6-pre
+      - project6-prod
+  endpoints:
+    - port: http          # must match the Service's port name
+      path: /metrics
+      interval: 30s
+

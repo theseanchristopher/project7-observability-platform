@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-overview-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: '1'
+data:
+  cluster-overview-dashboard.json: "{\n  \"id\": null,\n  \"uid\": \"cluster-overview-dashboard\"\
+    ,\n  \"title\": \"Cluster Overview\",\n  \"schemaVersion\": 36,\n  \"version\"\
+    : 1,\n  \"timezone\": \"browser\",\n  \"refresh\": \"30s\",\n  \"panels\": [\n\
+    \    {\n      \"type\": \"stat\",\n      \"title\": \"Node Count\",\n      \"\
+    targets\": [\n        {\n          \"expr\": \"count(kube_node_info)\",\n    \
+    \      \"legendFormat\": \"\"\n        }\n      ],\n      \"fieldConfig\": {\n\
+    \        \"defaults\": {\n          \"unit\": \"none\",\n          \"thresholds\"\
+    : {\n            \"mode\": \"absolute\",\n            \"steps\": [\n         \
+    \     {\n                \"color\": \"green\",\n                \"value\": null\n\
+    \              }\n            ]\n          }\n        },\n        \"overrides\"\
+    : []\n      },\n      \"gridPos\": {\n        \"h\": 4,\n        \"w\": 8,\n \
+    \       \"x\": 0,\n        \"y\": 0\n      }\n    },\n    {\n      \"type\": \"\
+    stat\",\n      \"title\": \"Running Pods\",\n      \"targets\": [\n        {\n\
+    \          \"expr\": \"sum(kube_pod_status_phase{phase=\\\"Running\\\"})\",\n\
+    \          \"legendFormat\": \"\"\n        }\n      ],\n      \"fieldConfig\"\
+    : {\n        \"defaults\": {\n          \"unit\": \"none\",\n          \"thresholds\"\
+    : {\n            \"mode\": \"absolute\",\n            \"steps\": [\n         \
+    \     {\n                \"color\": \"green\",\n                \"value\": null\n\
+    \              }\n            ]\n          }\n        },\n        \"overrides\"\
+    : []\n      },\n      \"gridPos\": {\n        \"h\": 4,\n        \"w\": 8,\n \
+    \       \"x\": 8,\n        \"y\": 0\n      }\n    },\n    {\n      \"type\": \"\
+    stat\",\n      \"title\": \"Total CPU (cores)\",\n      \"targets\": [\n     \
+    \   {\n          \"expr\": \"sum(rate(container_cpu_usage_seconds_total{container!=\\\
+    \"\\\"}[5m]))\",\n          \"legendFormat\": \"\"\n        }\n      ],\n    \
+    \  \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"cores\"\
+    ,\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n        \
+    \    \"steps\": [\n              {\n                \"color\": \"green\",\n  \
+    \              \"value\": null\n              }\n            ]\n          }\n\
+    \        },\n        \"overrides\": []\n      },\n      \"gridPos\": {\n     \
+    \   \"h\": 4,\n        \"w\": 8,\n        \"x\": 16,\n        \"y\": 0\n     \
+    \ }\n    },\n    {\n      \"type\": \"timeseries\",\n      \"title\": \"Cluster\
+    \ CPU Usage (cores)\",\n      \"targets\": [\n        {\n          \"expr\": \"\
+    sum(rate(container_cpu_usage_seconds_total{container!=\\\"\\\"}[5m]))\",\n   \
+    \       \"legendFormat\": \"{{namespace}}\"\n        }\n      ],\n      \"fieldConfig\"\
+    : {\n        \"defaults\": {\n          \"unit\": \"none\"\n        },\n     \
+    \   \"overrides\": []\n      },\n      \"gridPos\": {\n        \"h\": 8,\n   \
+    \     \"w\": 24,\n        \"x\": 0,\n        \"y\": 4\n      }\n    },\n    {\n\
+    \      \"type\": \"timeseries\",\n      \"title\": \"Cluster Memory Usage (bytes)\"\
+    ,\n      \"targets\": [\n        {\n          \"expr\": \"sum(container_memory_working_set_bytes{container!=\\\
+    \"\\\"})\",\n          \"legendFormat\": \"{{namespace}}\"\n        }\n      ],\n\
+    \      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"none\"\
+    \n        },\n        \"overrides\": []\n      },\n      \"gridPos\": {\n    \
+    \    \"h\": 8,\n        \"w\": 24,\n        \"x\": 0,\n        \"y\": 12\n   \
+    \   }\n    }\n  ]\n}"
