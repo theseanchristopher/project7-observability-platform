@@ -1,0 +1,132 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="650">
+  <style>
+    .box { fill: #f5f5f5; stroke: #333; stroke-width: 1.5; }
+    .ns { fill: #e0f3ff; stroke: #1f4e79; stroke-width: 1.5; }
+    .title { font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; }
+    .label { font-family: Arial, sans-serif; font-size: 12px; }
+    .arrow { stroke: #333; stroke-width: 1.5; marker-end: url(#arrowhead); fill: none; }
+  </style>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7"
+            refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="30" text-anchor="middle" class="title">
+    Project 7 – Kubernetes Observability Platform
+  </text>
+
+  <!-- Left: Application Environments -->
+  <rect x="30" y="70" width="420" height="540" class="box"/>
+  <text x="240" y="90" text-anchor="middle" class="label">
+    Application Workloads (Project 6: dev / pre / prod)
+  </text>
+
+  <!-- project6-dev -->
+  <rect x="50" y="120" width="180" height="140" class="ns" />
+  <text x="140" y="140" text-anchor="middle" class="label">Namespace: project6-dev</text>
+  <rect x="70" y="155" width="140" height="35" class="box" />
+  <text x="140" y="177" text-anchor="middle" class="label">project4-app Pods</text>
+  <rect x="70" y="200" width="140" height="35" class="box" />
+  <text x="140" y="222" text-anchor="middle" class="label">Service (port http)</text>
+  <text x="140" y="245" text-anchor="middle" class="label">/metrics exposed via Nginx</text>
+
+  <!-- project6-pre -->
+  <rect x="50" y="290" width="180" height="140" class="ns" />
+  <text x="140" y="310" text-anchor="middle" class="label">Namespace: project6-pre</text>
+  <rect x="70" y="325" width="140" height="35" class="box" />
+  <text x="140" y="347" text-anchor="middle" class="label">project4-app Pods</text>
+  <rect x="70" y="370" width="140" height="35" class="box" />
+  <text x="140" y="392" text-anchor="middle" class="label">Service (port http)</text>
+  <text x="140" y="415" text-anchor="middle" class="label">/metrics exposed via Nginx</text>
+
+  <!-- project6-prod -->
+  <rect x="50" y="460" width="180" height="140" class="ns" />
+  <text x="140" y="480" text-anchor="middle" class="label">Namespace: project6-prod</text>
+  <rect x="70" y="495" width="140" height="35" class="box" />
+  <text x="140" y="517" text-anchor="middle" class="label">project4-app Pods</text>
+  <rect x="70" y="540" width="140" height="35" class="box" />
+  <text x="140" y="562" text-anchor="middle" class="label">Service (port http)</text>
+  <text x="140" y="585" text-anchor="middle" class="label">/metrics exposed via Nginx</text>
+
+  <!-- Monitoring namespace -->
+  <rect x="480" y="120" width="590" height="480" class="box"/>
+  <text x="775" y="140" text-anchor="middle" class="label">
+    monitoring Namespace (kube-prometheus-stack)
+  </text>
+
+  <!-- ServiceMonitor -->
+  <rect x="500" y="170" width="200" height="60" class="box" />
+  <text x="600" y="192" text-anchor="middle" class="label">ServiceMonitor</text>
+  <text x="600" y="210" text-anchor="middle" class="label">
+    Selects app Services in dev/pre/prod
+  </text>
+
+  <!-- Prometheus -->
+  <rect x="745" y="170" width="200" height="60" class="box" />
+  <text x="845" y="192" text-anchor="middle" class="label">Prometheus</text>
+  <text x="845" y="210" text-anchor="middle" class="label">
+    Scrapes /metrics + cluster metrics
+  </text>
+
+  <!-- Grafana -->
+  <rect x="745" y="270" width="200" height="60" class="box" />
+  <text x="845" y="292" text-anchor="middle" class="label">Grafana</text>
+  <text x="845" y="310" text-anchor="middle" class="label">
+    Dashboards &amp; visualizations
+  </text>
+
+  <!-- Alertmanager -->
+  <rect x="745" y="370" width="200" height="60" class="box" />
+  <text x="845" y="392" text-anchor="middle" class="label">Alertmanager</text>
+  <text x="845" y="410" text-anchor="middle" class="label">
+    Handles alerts from Prometheus
+  </text>
+
+  <!-- Dashboards ConfigMaps -->
+  <rect x="500" y="270" width="200" height="100" class="box" />
+  <text x="600" y="292" text-anchor="middle" class="label">Dashboard ConfigMaps</text>
+  <text x="600" y="310" text-anchor="middle" class="label">
+    monitoring/dashboards/*.yaml
+  </text>
+  <text x="600" y="328" text-anchor="middle" class="label">
+    label: grafana_dashboard="1"
+  </text>
+
+  <!-- Argo CD -->
+  <rect x="620" y="470" width="220" height="60" class="box" />
+  <text x="730" y="492" text-anchor="middle" class="label">Argo CD Application</text>
+  <text x="730" y="510" text-anchor="middle" class="label">
+    Reconciles Project 7 Git repo
+  </text>
+
+  <!-- Arrows from Services to ServiceMonitor -->
+  <line x1="230" y1="215" x2="500" y2="200" class="arrow" />
+  <line x1="230" y1="385" x2="500" y2="200" class="arrow" />
+  <line x1="230" y1="555" x2="500" y2="200" class="arrow" />
+  <text x="360" y="190" text-anchor="middle" class="label">/metrics</text>
+
+  <!-- Arrow: ServiceMonitor to Prometheus -->
+  <line x1="700" y1="200" x2="745" y2="200" class="arrow" />
+  <text x="725" y="190" text-anchor="middle" class="label">scrape config</text>
+
+  <!-- Arrow: Prometheus to Grafana -->
+  <line x1="845" y1="230" x2="845" y2="270" class="arrow" />
+  <text x="865" y="255" class="label">PromQL</text>
+
+  <!-- Arrow: Prometheus to Alertmanager -->
+  <line x1="845" y1="230" x2="845" y2="370" class="arrow" />
+  <text x="865" y="310" class="label">alerts</text>
+
+  <!-- Arrow: Dashboard ConfigMaps to Grafana -->
+  <line x1="700" y1="320" x2="745" y2="300" class="arrow" />
+  <text x="720" y="290" class="label">sidecar</text>
+
+  <!-- Arrow: Argo CD to monitoring namespace -->
+  <line x1="730" y1="470" x2="730" y2="430" class="arrow" />
+  <text x="750" y="450" class="label">GitOps</text>
+</svg>
