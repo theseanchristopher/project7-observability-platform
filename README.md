@@ -1,72 +1,61 @@
-
 # Project 7 — Kubernetes Observability Platform (Prometheus, Grafana, Alerting)
 
-This project adds a **production-style observability layer** on top of the Kubernetes
-platform created in Projects 1–6. It installs the `kube-prometheus-stack` Helm chart
-(Prometheus Operator, Prometheus, Alertmanager, Grafana, exporters) into a dedicated
-`monitoring` namespace and wires it to scrape **application metrics** from the multi-
-environment deployment created in **Project 6** (`project6-dev`, `project6-pre`,
-`project6-prod`).
+Project 7 adds a **production-style observability layer** to the Kubernetes platform built in Projects 1–6.
+It deploys the **kube-prometheus-stack** (Prometheus Operator, Prometheus, Alertmanager, Grafana, and exporters)
+into a dedicated `monitoring` namespace and configures it to scrape **application metrics** from the
+multi-environment workloads deployed in **Project 6** (`project6-dev`, `project6-pre`, `project6-prod`).
 
-Project 7 demonstrates:
-
-- Cluster-level monitoring with **Prometheus Operator** and exporters
-- Application-level metrics via a `/metrics` endpoint added to the Project 1 app
-- A **ServiceMonitor** that discovers and scrapes the app in dev / pre / prod
-- **GitOps-managed Grafana dashboards** provisioned from ConfigMaps
-- Documentation for installation, custom metrics, dashboards, alerts, and troubleshooting
-
-For deeper technical details, see the `/docs` directory.
+This project is intentionally focused on the **platform wiring** (discovery, scraping, dashboards-as-code, GitOps flow),
+not advanced application instrumentation.
 
 ---
 
-## 1. High-Level Architecture
+## 1. What This Project Demonstrates
 
-The observability stack builds on the existing portfolio:
+- Cluster-level monitoring using Prometheus Operator and standard exporters
+- Application-level metrics collected from a `/metrics` endpoint
+- A `ServiceMonitor` scraping the app across **three namespaces**
+- Grafana dashboards managed as code and provisioned via ConfigMaps
+- A GitOps workflow where Argo CD reconciles the monitoring stack and assets
 
-- **Project 1**  
-  Builds and pushes the application container image to ECR. In Project 7, the image
-  is extended with a `/metrics` endpoint.
+---
 
-- **Project 4**  
-  Provides the Helm chart (Deployment, Service, Ingress, HPA) for the application.
+## 2. High-Level Architecture
 
-- **Project 6**  
-  Deploys the application into three namespaces using Argo CD ApplicationSet:  
-  `project6-dev`, `project6-pre`, `project6-prod`.
+This project builds on earlier portfolio components:
 
-- **Project 7 (this project)**  
-  Installs `kube-prometheus-stack` into the `monitoring` namespace and configures
-  Prometheus to scrape application metrics in all three namespaces. Grafana dashboards
-  are managed as code and loaded automatically.
+- **Project 1**: builds the application container image (extended here to expose `/metrics`)
+- **Project 4**: provides the Helm chart (Deployment, Service, Ingress, HPA) for the application
+- **Project 6**: deploys the application into `project6-dev`, `project6-pre`, and `project6-prod` via ApplicationSet
+- **Project 7 (this repo)**: installs the monitoring stack and scrapes/visualizes those workloads
 
-The architecture diagram is stored at:
+Architecture diagram:
 
 - `docs/images/project7-architecture.svg`
 
+For the detailed flow, see: `docs/architecture.md`.
+
 ---
 
-## 2. Repository Structure
-
-A typical layout for this project looks like:
+## 3. Repository Structure
 
 ```text
 project7-observability-platform/
 ├── README.md
 ├── argocd/
 │   └── apps/
-│       └── kube-prometheus-stack.yaml        # Argo CD Application for the Helm chart
+│       └── kube-prometheus-stack.yaml
 ├── monitoring/
-│   ├── namespace.yaml                        # monitoring namespace
+│   ├── namespace.yaml
 │   ├── servicemonitors/
-│   │   └── project-app-servicemonitor.yaml   # scrapes app metrics in dev/pre/prod
+│   │   └── project-app-servicemonitor.yaml
 │   ├── dashboards/
 │   │   ├── app-health-dashboard.yaml
 │   │   ├── cluster-overview-dashboard.yaml
 │   │   ├── app-metrics-dashboard.yaml
 │   │   └── workload-status-dashboard.yaml
 │   └── alerts/
-│       └── (optional PrometheusRule files)
+│       └── (optional PrometheusRule manifests)
 └── docs/
     ├── architecture.md
     ├── monitoring-stack-overview.md
@@ -80,250 +69,120 @@ project7-observability-platform/
         └── project7-architecture.svg
 ```
 
-This structure mirrors the previous projects: a top-level README, a `/docs` folder
-for deep dives, and GitOps manifests organized by concern.
+---
+
+## 4. Monitoring Stack Components
+
+Project 7 installs `kube-prometheus-stack`, which includes:
+
+1. **Prometheus Operator** (CRDs + controllers for Prometheus/Alertmanager)
+2. **Prometheus** (scrapes targets and stores time series)
+3. **Grafana** (visualization, dashboard provisioning via sidecar)
+4. **Alertmanager** (receives and routes alerts)
+5. **Exporters** (`kube-state-metrics`, `node-exporter`, kubelet metrics)
+
+See: `docs/monitoring-stack-overview.md`.
 
 ---
 
-## 3. Monitoring Stack Components
+## 5. Application Metrics Integration
 
-Project 7 uses the `kube-prometheus-stack` chart to install and manage:
+To demonstrate end-to-end observability, the application image exposes a basic Prometheus endpoint:
 
-1. **Prometheus Operator**  
-   - Manages Prometheus and Alertmanager instances
-   - Provides CRDs: `Prometheus`, `Alertmanager`, `ServiceMonitor`, `PodMonitor`,
-     `PrometheusRule`, and more
-
-2. **Prometheus**  
-   - Scrapes cluster metrics (API server, controller manager, scheduler, etc.)
-   - Scrapes node metrics via node-exporter
-   - Scrapes object metrics via kube-state-metrics
-   - Scrapes application metrics via `project-app-servicemonitor`
-
-3. **Grafana**  
-   - Comes with built-in Kubernetes dashboards
-   - Loads custom dashboards from ConfigMaps labeled `grafana_dashboard: "1"`
-   - Shows application health and workload status via Project 7 dashboards
-
-4. **Alertmanager**  
-   - Deployed by the chart
-   - Ready to receive alerts from Prometheus
-   - Not wired to external receivers (Slack, email, etc.) in this project, but can
-     be extended later
-
-5. **Exporters**  
-   - `kube-state-metrics` for Kubernetes object state
-   - `node-exporter` for node-level metrics
-   - Kubelet metrics for container CPU/memory usage
-
-A more detailed explanation is provided in `docs/monitoring-stack-overview.md`.
-
----
-
-## 4. Application Metrics Integration
-
-To demonstrate application-level observability, Project 7 adds a very simple
-Prometheus endpoint to the Project 1 application:
-
-- A static file `metrics.prom` is added under the app source tree.
-- Nginx is configured to serve this file at the `/metrics` path.
-- The application’s Kubernetes Service exposes port `http` (port 80), which is
-  referenced by Prometheus.
-
-Example metric exposed:
+- `/metrics` serves a static `metrics.prom` file (Prometheus text format)
+- Example metric:
 
 ```text
 project_app_dummy_requests_total 1
 ```
 
-This metric is intentionally simple; the goal is to show the full path from:
+This is intentionally simple; the goal is to show the complete pipeline:
 
-`Application → /metrics → ServiceMonitor → Prometheus → Grafana dashboards`
+`App → /metrics → ServiceMonitor → Prometheus → Grafana`
 
-More details are available in `docs/custom-metrics.md`.
-
----
-
-## 5. ServiceMonitor and Scrape Targets
-
-Project 7 defines a `ServiceMonitor` that instructs Prometheus to discover and
-scrape the application in all three environments:
-
-- `project6-dev`
-- `project6-pre`
-- `project6-prod`
-
-Key aspects of `project-app-servicemonitor.yaml`:
-
-- `namespaceSelector.matchNames` selects the three namespaces
-- `selector.matchLabels` targets Services with `app.kubernetes.io/name: project4-app`
-- `endpoints` defines:
-  - `port: http`
-  - `path: /metrics`
-  - `interval: 30s`
-
-Once applied, Prometheus shows the app targets as **UP** in the `/targets` UI, and
-Grafana can query them using PromQL.
+See: `docs/custom-metrics.md`.
 
 ---
 
-## 6. GitOps-Managed Grafana Dashboards
+## 6. ServiceMonitor and Scrape Targets
 
-All Grafana dashboards in Project 7 are managed as code. Each dashboard is
-defined as a `ConfigMap` in `monitoring/dashboards/` with:
+A single `ServiceMonitor` in `monitoring` is configured to:
+
+- select Services labeled `app.kubernetes.io/name: project4-app`
+- scrape `/metrics` on the `http` port
+- discover targets across:
+  - `project6-dev`
+  - `project6-pre`
+  - `project6-prod`
+
+See: `docs/custom-metrics.md` and `docs/installation.md`.
+
+---
+
+## 7. Dashboards as Code (GitOps)
+
+Custom dashboards are stored as ConfigMaps under `monitoring/dashboards/` and labeled:
 
 ```yaml
-metadata:
-  namespace: monitoring
-  labels:
-    grafana_dashboard: "1"
-data:
-  some-dashboard.json: |
-    { ... full Grafana dashboard JSON ... }
+labels:
+  grafana_dashboard: "1"
 ```
 
-The `kube-prometheus-stack` chart enables Grafana’s dashboard sidecar, which:
+Grafana’s dashboard sidecar automatically loads these dashboards from ConfigMaps in the `monitoring` namespace.
 
-- Watches for ConfigMaps in `monitoring`
-- Detects the `grafana_dashboard: "1"` label
-- Loads the embedded JSON as a Grafana dashboard
+Dashboards included:
 
-Dashboards implemented in this project:
+1. **App Health by Namespace**
+2. **Cluster Overview**
+3. **Application Metrics Detail**
+4. **Workload Status (project4-app)**
 
-1. **App Health by Namespace**  
-   - Shows `avg by (namespace) (up{container="project4-app"})` as a bar gauge
-
-2. **Cluster Overview**  
-   - Node count, running pods, cluster CPU and memory time series
-
-3. **Application Metrics Detail**  
-   - `project_app_dummy_requests_total` aggregated by namespace and over time
-
-4. **Workload Status (project4-app)**  
-   - Desired vs. available replicas
-   - Pod restart rates per namespace
-
-See `docs/dashboards.md` for a full explanation of how to build, export, and
-manage these dashboards.
+See: `docs/dashboards.md`.
 
 ---
 
-## 7. Deployment and GitOps Flow
+## 8. Deployment Flow (GitOps)
 
-Project 7 follows the same GitOps principles used in earlier projects:
-
-1. **Edit configuration** in the Project 7 repo:
-   - `argocd/apps/kube-prometheus-stack.yaml`
-   - `monitoring/namespace.yaml`
-   - `monitoring/servicemonitors/project-app-servicemonitor.yaml`
-   - `monitoring/dashboards/*.yaml`
-   - `monitoring/alerts/*.yaml` (optional)
-
-2. **Commit and push** to the Git repository.
-
-3. **Argo CD**:
-   - Watches the Project 7 repo for changes
-   - Reconciles the desired state into the cluster
-   - Ensures kube-prometheus-stack, ServiceMonitor, dashboards, and alerts
-     are all kept in sync
-
-4. **Prometheus and Grafana**:
-   - Prometheus automatically discovers new scrape targets via ServiceMonitor
-   - Grafana automatically loads or updates dashboards from ConfigMaps
-
-No manual `kubectl apply` steps to production are required.
+1. Commit monitoring manifests to this repo
+2. Argo CD reconciles:
+   - the Helm-based monitoring stack
+   - ServiceMonitor(s)
+   - dashboard ConfigMaps
+   - optional PrometheusRules
+3. Prometheus discovers targets via ServiceMonitor and begins scraping
+4. Grafana renders dashboards using PromQL queries
 
 ---
 
-## 8. Verification Steps
+## 9. Verification (Quick Checklist)
 
-After applying the stack and confirming that node capacity is sufficient:
+### 9.1 Pods Running
 
-1. **Check monitoring namespace:**
+```bash
+kubectl get pods -n monitoring
+```
 
-   ```bash
-   kubectl get pods -n monitoring
-   ```
+Expect to see Prometheus, Grafana, Alertmanager, exporters, and the operator.
 
-   You should see:
-   - Prometheus
-   - Alertmanager
-   - Grafana
-   - kube-state-metrics
-   - node-exporter
-   - Prometheus Operator
+### 9.2 Prometheus Targets
 
-2. **Port-forward Grafana:**
+```bash
+kubectl port-forward svc/kube-prometheus-stack-prometheus 9090:9090 -n monitoring
+```
 
-   ```bash
-   kubectl port-forward svc/kube-prometheus-stack-grafana 3000:80 -n monitoring
-   ```
+Open `http://localhost:9090/targets` and confirm the app targets for `project6-*` are **UP**.
 
-   Open `http://localhost:3000`.
+### 9.3 Grafana Dashboards
 
-3. **Verify dashboards:**
+```bash
+kubectl port-forward svc/kube-prometheus-stack-grafana 3000:80 -n monitoring
+```
 
-   - Go to **Dashboards → Browse**
-   - Confirm dashboards:
-     - *App Health by Namespace*
-     - *Cluster Overview*
-     - *Application Metrics Detail*
-     - *Workload Status (project4-app)*
-
-4. **Verify app metrics in Prometheus:**
-
-   Port-forward Prometheus:
-
-   ```bash
-   kubectl port-forward svc/kube-prometheus-stack-prometheus 9090:9090 -n monitoring
-   ```
-
-   Visit `http://localhost:9090` and run:
-
-   ```promql
-   up{container="project4-app"}
-   project_app_dummy_requests_total
-   ```
-
-   You should see time series for the three namespaces.
+Open `http://localhost:3000` → **Dashboards → Browse** and confirm the four project dashboards exist.
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting and References
 
-Common issues and quick checks:
-
-- **Pending Prometheus or Grafana pods**  
-  - Cause: Not enough node capacity / Too many pods on the cluster  
-  - Fix: Adjust node group size in Terraform (Project 2) and re-apply
-
-- **ServiceMonitor not scraping**  
-  - Check that the Service:
-    - Uses `port: http` (and that it matches the ServiceMonitor endpoint)
-    - Has labels matching the ServiceMonitor `selector.matchLabels`
-  - Check that `/metrics` returns a 200 response inside the cluster
-
-- **Dashboards not appearing**  
-  - Ensure the ConfigMap:
-    - Is in `monitoring` namespace
-    - Has `grafana_dashboard: "1"` label
-    - Contains valid JSON under a key ending with `.json`
-
-- **Argo CD OutOfSync**  
-  - Check the Argo CD Application for this project
-  - Inspect the diff and reconcile manually if necessary
-
-Additional details and extended troubleshooting are in `docs/troubleshooting.md`.
-
----
-
-## 10. References
-
-See `docs/references.md` for links to:
-
-- Prometheus and PromQL documentation
-- Prometheus Operator and kube-prometheus-stack
-- Grafana dashboards and JSON model
-- Argo CD and GitOps concepts
-- Kubernetes metrics pipeline and exporters
-- Related repositories for Projects 1, 4, and 6
+- Troubleshooting: `docs/troubleshooting.md`
+- References: `docs/references.md`

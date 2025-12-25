@@ -1,17 +1,13 @@
-
 # Alerts
 
-Project 7 installs Alertmanager and supports Prometheus alerting rules, but keeps
-alerting intentionally minimal so the focus remains on metrics and dashboards.
-
-You can extend this project by adding `PrometheusRule` resources under
-`monitoring/alerts/`.
+Project 7 installs Alertmanager and supports Prometheus alerting rules, but keeps alerting intentionally minimal.
+The primary goal is to demonstrate the platform wiring; alert routing (Slack/email) is a natural extension.
 
 ## 1. PrometheusRule Basics
 
-A `PrometheusRule` resource groups one or more alerting or recording rules.
+A `PrometheusRule` groups alerting (and optionally recording) rules evaluated by Prometheus.
 
-Skeleton:
+Example skeleton:
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1
@@ -33,35 +29,28 @@ spec:
             description: "No healthy pods for project4-app for the last 5 minutes."
 ```
 
-Once applied, Prometheus evaluates these rules and sends alerts to Alertmanager.
-
 ## 2. Example Alerts
 
-You might consider:
-
-1. **Application Down**
-
-   As shown above, checks if all `project4-app` pods are down.
+1. **Application Down**  
+   Detects loss of availability over a sustained window.
 
 2. **High Pod Restart Rate**
 
-   ```promql
-   sum by (namespace) (
-     rate(kube_pod_container_status_restarts_total{container="project4-app"}[10m])
-   ) > 0
-   ```
+```promql
+sum by (namespace) (
+  rate(kube_pod_container_status_restarts_total{container="project4-app"}[10m])
+) > 0
+```
 
-3. **High CPU or Memory Usage**
-
-   Use container CPU and memory metrics to trigger alerts when usage exceeds a
-   threshold over a sustained period.
+3. **High CPU or Memory Usage**  
+   Use container CPU/memory metrics with a sustained threshold window.
 
 ## 3. Alertmanager Configuration
 
-By default, kube-prometheus-stack deploys an Alertmanager instance with a basic
-configuration. To send alerts to external systems (Slack, email, etc.), you
-would update the Alertmanager configuration (often via a `Secret` or the chart
-values) and add appropriate receivers and routes.
+kube-prometheus-stack deploys Alertmanager with a basic configuration.
+To route alerts to external receivers, you would:
 
-Project 7 leaves this step out to keep the scope manageable, but the platform is
-ready to support it.
+- Configure receivers and routes (commonly via chart values and a Secret)
+- Add PrometheusRules under `monitoring/alerts/`
+
+Project 7 leaves external integrations out-of-scope to keep the project focused.

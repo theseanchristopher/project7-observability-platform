@@ -1,163 +1,123 @@
-
 # Troubleshooting
 
-This document captures common issues you might encounter when working with
-Project 7 and how to resolve them.
+This document captures common issues in Project 7 and a practical debug order:
+Grafana → Prometheus → ServiceMonitor → Service → Pods → `/metrics`.
 
 ---
 
-## 1. Pending Pods in monitoring Namespace
+## 1. Pending Pods in `monitoring`
 
-**Symptom:**
+**Symptom**
+- Prometheus/Grafana/Alertmanager pods stuck in `Pending`
+- Scheduler events show capacity issues (e.g., “Too many pods”)
 
-- One or more pods in `monitoring` (e.g., Prometheus, Alertmanager) are `Pending`.
-- `kubectl describe pod` shows messages like:
-  `0/2 nodes are available: 2 Too many pods.`
+**Cause**
+- Cluster capacity is insufficient (nodes, pod limits, or resources)
 
-**Cause:**
+**Fix**
+- Scale node group capacity (Project 2 Terraform), then re-check:
 
-- The cluster does not have enough capacity to schedule additional pods.
-
-**Resolution:**
-
-- Use Terraform from Project 2 to increase the node group size or adjust min/max
-  settings.
-- Re-run `terraform apply`.
-- After nodes join the cluster, the pods should move from `Pending` to `Running`.
+```bash
+kubectl get pods -n monitoring
+```
 
 ---
 
-## 2. ServiceMonitor Not Scraping Application
+## 2. ServiceMonitor Not Scraping the App
 
-**Symptom:**
+**Symptom**
+- App targets missing in Prometheus `/targets`
+- Grafana app dashboards show no data
 
-- Your app targets do not appear in Prometheus `/targets`.
-- Dashboards do not show app data.
+**Checks**
 
-**Checks:**
+1. ServiceMonitor exists:
 
-1. Confirm the ServiceMonitor exists and references the expected namespaces:
+```bash
+kubectl get servicemonitors -n monitoring
+kubectl describe servicemonitor project-app-servicemonitor -n monitoring
+```
 
-   ```bash
-   kubectl get servicemonitors -n monitoring
-   kubectl describe servicemonitor project-app-servicemonitor -n monitoring
-   ```
+2. App Services have expected labels and port name:
 
-2. Confirm the application Services have the correct labels and port name:
+```bash
+kubectl get svc -n project6-dev
+kubectl get svc -n project6-pre
+kubectl get svc -n project6-prod
+```
 
-   ```bash
-   kubectl get svc -n project6-dev
-   kubectl get svc -n project6-pre
-   kubectl get svc -n project6-prod
-   ```
+Confirm:
+- port name is `http`
+- labels include `app.kubernetes.io/name: project4-app`
 
-   The Service should:
-   - Use `name: http` for the port exposed on 80.
-   - Include `app.kubernetes.io/name: project4-app` in `metadata.labels`.
+3. `/metrics` is reachable inside the cluster (debug pod).
 
-3. Confirm `/metrics` is reachable from inside the cluster (e.g., using a debug pod).
-
-**Fix:**
-
-- Align labels and port names between Service and ServiceMonitor.
-- Ensure `/metrics` is served by Nginx as configured.
+**Fix**
+- Align Service labels/port naming with ServiceMonitor selector/endpoints.
 
 ---
 
-## 3. Metrics 404 or Invalid Format
+## 3. `/metrics` Returns 404 or Scrape Parse Errors
 
-**Symptom:**
+**Symptom**
+- Prometheus shows scrape errors (404 or parse errors)
 
-- Prometheus shows scrape errors for `/metrics`.
-- Logs mention 404 or parse errors.
+**Checks**
+- Curl `/metrics` from inside the cluster and confirm:
+  - HTTP 200
+  - Prometheus text exposition format
 
-**Checks:**
-
-1. Use `kubectl port-forward` or an ephemeral pod to curl the metrics endpoint:
-
-   ```bash
-   curl http://<service-ip>/metrics
-   ```
-
-2. Confirm the response:
-   - Returns HTTP 200.
-   - Matches Prometheus text exposition format.
-
-**Fix:**
-
-- Ensure `metrics.prom` is in the expected path inside the container.
-- Verify the Nginx `location /metrics` block matches the container filesystem.
+**Fix**
+- Verify `metrics.prom` path in the image
+- Verify Nginx `/metrics` location and `try_files` path
 
 ---
 
 ## 4. Dashboards Not Appearing in Grafana
 
-**Symptom:**
+**Symptom**
+- Custom dashboards do not show
 
-- Custom dashboards do not show up in Grafana.
+**Checks**
 
-**Checks:**
+1. ConfigMaps exist:
 
-1. Confirm ConfigMaps exist:
+```bash
+kubectl get configmaps -n monitoring | grep dashboard
+```
 
-   ```bash
-   kubectl get configmaps -n monitoring | grep dashboard
-   ```
+2. Each dashboard ConfigMap:
+- is in `monitoring`
+- has label `grafana_dashboard: "1"`
+- includes a `.json` key under `data`
+- contains valid JSON
 
-2. Confirm each ConfigMap:
-
-   - Is in `monitoring` namespace.
-   - Has `metadata.labels.grafana_dashboard: "1"`.
-   - Has `data` keys ending with `.json`.
-
-3. Check Argo CD Application status:
-   - Ensure the Application managing monitoring manifests is **Synced**.
-
-**Fix:**
-
-- Add the missing label or correct the namespace.
-- Fix JSON syntax if Grafana logs show parsing errors.
-- Re-sync in Argo CD.
+3. Argo CD Application is synced for monitoring assets.
 
 ---
 
-## 5. Argo CD OutOfSync for Monitoring
+## 5. Argo CD OutOfSync
 
-**Symptom:**
+**Symptom**
+- Monitoring Application is `OutOfSync`
 
-- The Argo CD Application for Project 7 shows `OutOfSync`.
+**Cause**
+- Manual changes applied outside Git, or drift caused by defaults
 
-**Checks:**
-
-- Inspect the diff view to see which manifests differ.
-- Common causes:
-  - Manual `kubectl apply` modifying resources.
-  - A resource created or changed outside of Git.
-
-**Fix:**
-
-- Prefer updating manifests in Git and letting Argo CD reconcile.
-- If appropriate, use the **Sync** button with **Apply** and **Prune** enabled.
+**Fix**
+- Prefer updating manifests in Git and syncing
+- Use the Argo CD diff view to confirm intended changes
 
 ---
 
-## 6. No Data in Dashboards
+## 6. Dashboards Load but Show “No data”
 
-**Symptom:**
+**Symptom**
+- Panels show N/A or “No data”
 
-- Dashboards load but show `N/A` or `No data`.
+**Checks**
+- Validate the underlying series in Prometheus or Grafana Explore
+- Confirm the dashboard time range includes recent scrapes
+- Confirm label filters (namespace/container names) match reality
 
-**Checks:**
-
-- Verify Prometheus is scraping the app metrics (`project_app_dummy_requests_total`).
-- Use Prometheus or Grafana Explore to run the same queries used in panels.
-- Confirm your time range includes the period when metrics are scraped.
-
-**Fix:**
-
-- Adjust the dashboard time range (e.g., last 1h).
-- Confirm pods are running and `/metrics` is scraped successfully.
-- Check for typos in label filters or metric names.
-
-If these steps do not resolve the issue, work backward from Grafana → Prometheus
-→ ServiceMonitor → Service → Pod logs.
+If still stuck, debug backwards: Grafana → Prometheus → targets → ServiceMonitor → Service → Pods.
